@@ -1,0 +1,96 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="create_tbl_editor" author="shpak">
+        <createTable tableName="tbl_editor">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_tbl_editor" nullable="false"/>
+            </column>
+            <column name="login" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="firstname" type="VARCHAR(64)"/>
+            <column name="lastname" type="VARCHAR(64)"/>
+        </createTable>
+        <addUniqueConstraint tableName="tbl_editor"
+                             columnNames="login"
+                             constraintName="uc_tbl_editor_login"/>
+        <sql dbms="postgresql">
+            SELECT setval('tbl_editor_id_seq', COALESCE((SELECT MAX(id) FROM tbl_editor) + 1, 1), false);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_tbl_issue" author="shpak">
+        <createTable tableName="tbl_issue">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_tbl_issue" nullable="false"/>
+            </column>
+            <column name="editor_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT"/>
+            <column name="created" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="tbl_issue"
+                                 baseColumnNames="editor_id"
+                                 constraintName="fk_tbl_issue_editor"
+                                 referencedTableName="tbl_editor"
+                                 referencedColumnNames="id"/>
+        <createIndex tableName="tbl_issue" indexName="idx_tbl_issue_editor_id">
+            <column name="editor_id"/>
+        </createIndex>
+        <sql dbms="postgresql">
+            SELECT setval('tbl_editor_id_seq', COALESCE((SELECT MAX(id) FROM tbl_editor) + 1, 1), false);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_tbl_label" author="shpak">
+        <createTable tableName="tbl_label">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_tbl_label" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uc_tbl_label_name"/>
+            </column>
+        </createTable>
+        <sql dbms="postgresql">
+            SELECT setval('tbl_editor_id_seq', COALESCE((SELECT MAX(id) FROM tbl_editor) + 1, 1), false);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_tbl_note" author="shpak">
+        <createTable tableName="tbl_note">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_tbl_note" nullable="false"/>
+            </column>
+            <column name="issue_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="tbl_note"
+                                 baseColumnNames="issue_id"
+                                 constraintName="fk_tbl_note_issue"
+                                 referencedTableName="tbl_issue"
+                                 referencedColumnNames="id"/>
+        <createIndex tableName="tbl_note" indexName="idx_tbl_note_issue_id">
+            <column name="issue_id"/>
+        </createIndex>
+        <sql dbms="postgresql">
+            SELECT setval('tbl_editor_id_seq', COALESCE((SELECT MAX(id) FROM tbl_editor) + 1, 1), false);
+        </sql>
+    </changeSet>
+</databaseChangeLog>
