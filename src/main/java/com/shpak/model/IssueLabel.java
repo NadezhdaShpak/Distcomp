@@ -19,13 +19,13 @@ public class IssueLabel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Issue issue;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "label_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

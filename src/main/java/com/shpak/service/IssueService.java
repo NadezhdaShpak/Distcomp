@@ -8,6 +8,7 @@ import com.shpak.model.Issue;
 import com.shpak.model.IssueLabel;
 import com.shpak.model.Label;
 import com.shpak.repository.impl.EditorRepoImpl;
+import com.shpak.repository.impl.IssueLabelRepoImpl;
 import com.shpak.repository.impl.IssueRepoImpl;
 import com.shpak.repository.impl.LabelRepoImpl;
 import lombok.AllArgsConstructor;
@@ -29,6 +30,7 @@ public class IssueService {
     public final IssueRepoImpl repoImpl;
     public final EditorRepoImpl editorRepo;
     public final LabelRepoImpl labelRepo;
+    private final IssueLabelRepoImpl issueLabelRepo;
     public final IssueDto mapper;
 
     @Transactional(readOnly = true)
@@ -42,33 +44,19 @@ public class IssueService {
 
     @Transactional(readOnly = true)
     public IssueResponseTo get(Long id) {
-        Issue issue = repoImpl.findById(id)
-                .orElseThrow();
+        Issue issue = repoImpl.findByIdWithLabels(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
         return mapper.out(issue);
     }
 
     @Transactional
     public IssueResponseTo create(IssueRequestTo input) {
-        // Проверка наличия заголовка
+        // Проверка заголовка
         if (repoImpl.existsByTitle(input.getTitle())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        // Создание или получение меток
-        Set<Label> labels = new HashSet<>();
-        if (input.getLabels() != null) {
-            for (String labelName : input.getLabels()) {
-                Label label = labelRepo.findByName(labelName)
-                        .orElseGet(() -> {
-                            log.debug("MY LOG Creating new label: {}", labelName);
-                            return labelRepo.save(Label.builder().name(labelName).build());
-                        });
-                log.debug("MY LOG Label added: {}", label.getName());
-                labels.add(label);
-            }
-        }
-
-        // Создание Issue
+        // Создание Issue без связей
         Issue issue = mapper.in(input);
 
         // Установка редактора
@@ -78,27 +66,96 @@ public class IssueService {
             issue.setEditor(editor);
         }
 
-        // Связывание меток
-        labels.forEach(label -> {
-            IssueLabel link = IssueLabel.builder()
-                    .issue(issue)
-                    .label(label)
-                    .build();
-            log.debug("MY LOG Linking issue {} to label {}", issue.getId(), label.getName());
-            issue.getIssueLabels().add(link);
-        });
-
+        // Сначала сохраняем Issue, чтобы получить ID
         Issue savedIssue = repoImpl.save(issue);
+
+        // Создание/получение меток
+        if (input.getLabels() != null && !input.getLabels().isEmpty()) {
+            for (String labelName : input.getLabels()) {
+                log.info("Создание связи для метки: {}", labelName);
+
+                // Найти или создать метку
+                Label label = labelRepo
+                        .findByName(labelName)
+                        .orElseGet(() ->
+                                labelRepo.save(Label.builder()
+                                        .name(labelName)
+                                        .build()));
+
+                // Создать связь IssueLabel и правильно установить двунаправленные отношения
+                IssueLabel issueLabel = IssueLabel.builder()
+                        .issue(savedIssue)
+                        .label(label)
+                        .build();
+
+                // Используем вспомогательный метод для установки связи со стороны issue
+                savedIssue.addIssueLabel(issueLabel);
+
+                // Используем вспомогательный метод для установки связи со стороны label
+                label.addIssueLabel(issueLabel);
+
+                // Сохраняем связь явно
+                issueLabelRepo.save(issueLabel);
+            }
+
+            // Повторно сохраняем задачу со всеми связями
+            savedIssue = repoImpl.save(savedIssue);
+
+            // Логируем количество связей для проверки
+            log.info("Total labels mapped: {}", savedIssue.getIssueLabels().size());
+        }
+
         return mapper.out(savedIssue);
     }
 
     @Transactional
-    public IssueResponseTo update(IssueRequestTo input) {
-        if (!repoImpl.existsById(input.getId())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found");
+    public IssueResponseTo update(IssueRequestTo input) {Issue existingIssue = repoImpl.findByIdWithLabels(input.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+
+        // Обновляем основные поля
+        existingIssue.setTitle(input.getTitle());
+        existingIssue.setContent(input.getContent());
+
+        // Обновляем редактора если изменился
+        if (input.getEditorId() != null &&
+                (existingIssue.getEditor() == null || !existingIssue.getEditor().getId().equals(input.getEditorId()))) {
+            Editor editor = editorRepo.findById(input.getEditorId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Editor not found"));
+            existingIssue.setEditor(editor);
         }
-        Issue updated = repoImpl.save(mapper.in(input));
-        return mapper.out(updated);
+
+        // Обработка меток, если их нужно обновить
+        if (input.getLabels() != null) {
+            // Удаляем все существующие связи
+            Set<IssueLabel> existingLabels = new HashSet<>(existingIssue.getIssueLabels());
+            for (IssueLabel existingLabel : existingLabels) {
+                existingIssue.removeIssueLabel(existingLabel);
+                issueLabelRepo.delete(existingLabel);
+            }
+
+            // Добавляем новые метки
+            for (String labelName : input.getLabels()) {
+                Label label = labelRepo
+                        .findByName(labelName)
+                        .orElseGet(() ->
+                                labelRepo.save(Label.builder()
+                                        .name(labelName)
+                                        .build()));
+
+                IssueLabel issueLabel = IssueLabel.builder()
+                        .issue(existingIssue)
+                        .label(label)
+                        .build();
+
+                existingIssue.addIssueLabel(issueLabel);
+                label.addIssueLabel(issueLabel);
+                issueLabelRepo.save(issueLabel);
+            }
+        }
+
+        // Сохраняем обновленную задачу
+        Issue updatedIssue = repoImpl.save(existingIssue);
+        return mapper.out(updatedIssue);
     }
 
     @Transactional

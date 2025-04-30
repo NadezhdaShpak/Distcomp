@@ -136,11 +136,6 @@
                                  referencedTableName="tbl_label"
                                  referencedColumnNames="id"/>
 
-        <!-- Уникальный индекс для пар issue_id и label_id -->
-        <addUniqueConstraint tableName="tbl_issue_label"
-                             columnNames="issue_id, label_id"
-                             constraintName="uc_tbl_issue_label_pair"/>
-
         <sql dbms="postgresql">
             SELECT setval('tbl_issue_label_id_seq',
                           COALESCE((SELECT MAX(id) FROM tbl_issue_label) + 1, 1),

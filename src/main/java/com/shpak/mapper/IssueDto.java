@@ -25,9 +25,17 @@ public interface IssueDto {
 
     @Named("mapLabels")
     static List<String> mapLabels(Set<IssueLabel> issueLabels) {
-        return issueLabels.stream()
-                .map(issueLabel -> issueLabel.getLabel().getName())
+        List<String> labels = issueLabels.stream()
+                .map(il ->
+                        {
+                            String name = il.getLabel().getName();
+                            System.out.println("MY LOG Mapped label: " + name);
+                            return name;
+                        }
+                )
                 .collect(Collectors.toList());
+        System.out.println("Total labels mapped: " + labels.size());
+        return labels;
     }
 
     @Named("idToEditor")

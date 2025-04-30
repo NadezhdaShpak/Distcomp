@@ -47,4 +47,16 @@ public class Issue {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Set<IssueLabel> issueLabels = new HashSet<>();
+
+    // Helper method to properly manage the relationship
+    public void addIssueLabel(IssueLabel issueLabel) {
+        issueLabels.add(issueLabel);
+        issueLabel.setIssue(this);
+    }
+
+    // Helper method to properly remove a label
+    public void removeIssueLabel(IssueLabel issueLabel) {
+        issueLabels.remove(issueLabel);
+        issueLabel.setIssue(null);
+    }
 }

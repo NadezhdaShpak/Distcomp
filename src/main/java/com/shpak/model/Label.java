@@ -30,4 +30,15 @@ public class Label {
     @EqualsAndHashCode.Exclude
     private Set<IssueLabel> labelIssues = new HashSet<>();
 
+    // Helper method to properly manage the relationship
+    public void addIssueLabel(IssueLabel issueLabel) {
+        labelIssues.add(issueLabel);
+        issueLabel.setLabel(this);
+    }
+
+    // Helper method to properly remove a label
+    public void removeIssueLabel(IssueLabel issueLabel) {
+        labelIssues.remove(issueLabel);
+        issueLabel.setLabel(null);
+    }
 }
