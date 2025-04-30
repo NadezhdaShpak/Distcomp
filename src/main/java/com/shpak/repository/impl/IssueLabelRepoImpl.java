@@ -1,11 +1,10 @@
 package com.shpak.repository.impl;
 
-import com.shpak.model.Editor;
+import com.shpak.model.IssueLabel;
 import com.shpak.repository.Repo;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface EditorRepoImpl extends Repo<Editor, Long> {
+public interface IssueLabelRepoImpl extends Repo<IssueLabel, Long> {
 
-    boolean existsByLogin(String login);
 }

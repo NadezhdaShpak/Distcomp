@@ -3,9 +3,11 @@ package com.shpak.service;
 import com.shpak.dto.in.NoteRequestTo;
 import com.shpak.dto.out.NoteResponseTo;
 import com.shpak.mapper.NoteDto;
+import com.shpak.model.Note;
 import com.shpak.repository.impl.NoteRepoImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,35 +18,44 @@ public class NoteService {
     public final NoteRepoImpl repoImpl;
     public final NoteDto mapper;
 
+    @Transactional(readOnly = true)
     public List<NoteResponseTo> getAll() {
         return repoImpl
-                .getAll()
+                .findAll()
+                .stream()
                 .map(mapper::out)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public NoteResponseTo get(Long id) {
-        return repoImpl
-                .get(id)
-                .map(mapper::out)
+        Note note = repoImpl.findById(id)
                 .orElseThrow();
+        return mapper.out(note);
     }
 
+    @Transactional
     public NoteResponseTo create(NoteRequestTo input) {
-        return repoImpl
-                .create(mapper.in(input))
-                .map(mapper::out)
-                .orElseThrow();
+        Note saved =  repoImpl
+                .save(mapper.in(input));
+        return mapper.out(saved);
     }
 
+    @Transactional
     public NoteResponseTo update(NoteRequestTo input) {
-        return repoImpl
-                .update(mapper.in(input))
-                .map(mapper::out)
-                .orElseThrow();
+        if (!repoImpl.existsById(input.getId())) {
+            throw new RuntimeException("Label not found with id: " + input.getId());
+        }
+        Note updated = repoImpl.save(mapper.in(input));
+        return mapper.out(updated);
     }
 
+    @Transactional
     public boolean delete(Long id) {
-        return repoImpl.delete(id);
+        if (!repoImpl.existsById(id)) {
+            return false;
+        }
+        repoImpl.deleteById(id);
+        return true;
     }
 }

@@ -1,38 +1,41 @@
 package com.shpak.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tbl_note")
+@Table(name = "tbl_issue_label")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Note {
+public class IssueLabel {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
     @JoinColumn(name = "issue_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Issue issue;
 
-    @Column(nullable = false, columnDefinition = "TEXT", length = 2048)
-    private String content;
+    @ManyToOne
+    @JoinColumn(name = "label_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Label label;
 
     @CreationTimestamp
-    @Column(name = "created", nullable = false, updatable = false) // Явное имя
+    @Column(nullable = false, updatable = false)
     private LocalDateTime created;
 
     @UpdateTimestamp
-    @Column(name = "modified", nullable = false) // Явное имя
+    @Column(nullable = false)
     private LocalDateTime modified;
 }

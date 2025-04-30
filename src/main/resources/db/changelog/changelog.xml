@@ -80,17 +80,71 @@
             <column name="content" type="TEXT">
                 <constraints nullable="false"/>
             </column>
+            <!-- Добавляем недостающие колонки -->
+            <column name="created" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
-        <addForeignKeyConstraint baseTableName="tbl_note"
-                                 baseColumnNames="issue_id"
-                                 constraintName="fk_tbl_note_issue"
-                                 referencedTableName="tbl_issue"
-                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+                baseTableName="tbl_note"
+                baseColumnNames="issue_id"
+                constraintName="fk_tbl_note_issue"
+                referencedTableName="tbl_issue"
+                referencedColumnNames="id"/>
         <createIndex tableName="tbl_note" indexName="idx_tbl_note_issue_id">
             <column name="issue_id"/>
         </createIndex>
         <sql dbms="postgresql">
             SELECT setval('tbl_editor_id_seq', COALESCE((SELECT MAX(id) FROM tbl_editor) + 1, 1), false);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_tbl_issue_label" author="shpak">
+        <createTable tableName="tbl_issue_label">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"
+                             primaryKeyName="pk_tbl_issue_label"
+                             nullable="false"/>
+            </column>
+            <column name="issue_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Внешние ключи -->
+        <addForeignKeyConstraint baseTableName="tbl_issue_label"
+                                 baseColumnNames="issue_id"
+                                 constraintName="fk_tbl_issue_label_issue"
+                                 referencedTableName="tbl_issue"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="tbl_issue_label"
+                                 baseColumnNames="label_id"
+                                 constraintName="fk_tbl_issue_label_label"
+                                 referencedTableName="tbl_label"
+                                 referencedColumnNames="id"/>
+
+        <!-- Уникальный индекс для пар issue_id и label_id -->
+        <addUniqueConstraint tableName="tbl_issue_label"
+                             columnNames="issue_id, label_id"
+                             constraintName="uc_tbl_issue_label_pair"/>
+
+        <sql dbms="postgresql">
+            SELECT setval('tbl_issue_label_id_seq',
+                          COALESCE((SELECT MAX(id) FROM tbl_issue_label) + 1, 1),
+                          false);
         </sql>
     </changeSet>
 </databaseChangeLog>

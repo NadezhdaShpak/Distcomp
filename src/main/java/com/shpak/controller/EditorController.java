@@ -44,7 +44,11 @@ public class EditorController {
 
     @GetMapping("/{id}")
     public EditorResponseTo read(@PathVariable long id) {
-        return editorService.get(id);
+        try {
+            return editorService.get(id);
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -55,4 +59,13 @@ public class EditorController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
     }
+
+    @PatchMapping("/{id}")
+    public EditorResponseTo patchEditor(
+            @PathVariable Long id,
+            @RequestBody EditorRequestTo patchRequest
+    ) {
+        return editorService.patch(id, patchRequest);
+    }
+
 }

@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,5 @@ public class IssueResponseTo {
     String content;
     LocalDateTime created;
     LocalDateTime modified;
+    private List<String> labels;
 }

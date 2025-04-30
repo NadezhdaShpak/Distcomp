@@ -1,19 +1,9 @@
 package com.shpak.repository;
 
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.NoRepositoryBean;
 
-public interface Repo<T> {
-    AtomicLong idGenerator = new AtomicLong();
+@NoRepositoryBean
+public interface Repo<T, Long> extends JpaRepository<T, Long> {
 
-    Stream<T> getAll();
-
-    Optional<T> get(Long id);
-
-    Optional<T> create(T input);
-
-    Optional<T> update(T input);
-
-    boolean delete(Long id);
 }
