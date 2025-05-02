@@ -7,7 +7,6 @@ import com.shpak.model.Editor;
 import com.shpak.model.Issue;
 import com.shpak.repository.impl.EditorRepoImpl;
 import com.shpak.repository.impl.IssueRepoImpl;
-import com.shpak.repository.impl.LabelRepoImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ public class EditorService {
     public final EditorRepoImpl repoImpl;
     public final EditorDto mapper;
     public final IssueRepoImpl issueRepo;
-    public final LabelRepoImpl labelRepo;
 
     @Transactional(readOnly = true)
     public List<EditorResponseTo> getAll() {
@@ -65,15 +63,8 @@ public class EditorService {
         Editor editor = repoImpl.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        // Явное удаление связанных Issue (каскад)
         List<Issue> issues = editor.getIssues();
         issueRepo.deleteAll(issues);
-
-
-        // Удаляем редактора
-        repoImpl.delete(editor);
-
-        // Удаляем оставшиеся метки без связей
         repoImpl.delete(editor);
         return true;
     }

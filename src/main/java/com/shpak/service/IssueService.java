@@ -51,72 +51,39 @@ public class IssueService {
 
     @Transactional
     public IssueResponseTo create(IssueRequestTo input) {
-        // Проверка заголовка
         if (repoImpl.existsByTitle(input.getTitle())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        // Создание Issue без связей
         Issue issue = mapper.in(input);
 
-        // Установка редактора
         if (input.getEditorId() != null) {
             Editor editor = editorRepo.findById(input.getEditorId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Editor not found"));
             issue.setEditor(editor);
         }
-
-        // Сначала сохраняем Issue, чтобы получить ID
+        // save Issue to get ID
         Issue savedIssue = repoImpl.save(issue);
 
-        // Создание/получение меток
         if (input.getLabels() != null && !input.getLabels().isEmpty()) {
             for (String labelName : input.getLabels()) {
-                log.info("Создание связи для метки: {}", labelName);
-
-                // Найти или создать метку
-                Label label = labelRepo
-                        .findByName(labelName)
-                        .orElseGet(() ->
-                                labelRepo.save(Label.builder()
-                                        .name(labelName)
-                                        .build()));
-
-                // Создать связь IssueLabel и правильно установить двунаправленные отношения
-                IssueLabel issueLabel = IssueLabel.builder()
-                        .issue(savedIssue)
-                        .label(label)
-                        .build();
-
-                // Используем вспомогательный метод для установки связи со стороны issue
-                savedIssue.addIssueLabel(issueLabel);
-
-                // Используем вспомогательный метод для установки связи со стороны label
-                label.addIssueLabel(issueLabel);
-
-                // Сохраняем связь явно
-                issueLabelRepo.save(issueLabel);
+                findOrCreateLabel(savedIssue, labelName);
             }
-
-            // Повторно сохраняем задачу со всеми связями
+            // save issue with all links
             savedIssue = repoImpl.save(savedIssue);
-
-            // Логируем количество связей для проверки
-            log.info("Total labels mapped: {}", savedIssue.getIssueLabels().size());
         }
-
         return mapper.out(savedIssue);
     }
 
     @Transactional
-    public IssueResponseTo update(IssueRequestTo input) {Issue existingIssue = repoImpl.findByIdWithLabels(input.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+    public IssueResponseTo update(IssueRequestTo input) {
+        Issue existingIssue = repoImpl.findByIdWithLabels(input.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
 
-        // Обновляем основные поля
         existingIssue.setTitle(input.getTitle());
         existingIssue.setContent(input.getContent());
 
-        // Обновляем редактора если изменился
+        // if editor changed, update
         if (input.getEditorId() != null &&
                 (existingIssue.getEditor() == null || !existingIssue.getEditor().getId().equals(input.getEditorId()))) {
             Editor editor = editorRepo.findById(input.getEditorId())
@@ -124,38 +91,41 @@ public class IssueService {
             existingIssue.setEditor(editor);
         }
 
-        // Обработка меток, если их нужно обновить
+        updateLabels(input, existingIssue);
+        Issue updatedIssue = repoImpl.save(existingIssue);
+        return mapper.out(updatedIssue);
+    }
+
+    private void updateLabels(IssueRequestTo input, Issue existingIssue) {
         if (input.getLabels() != null) {
-            // Удаляем все существующие связи
+            // delete all labels
             Set<IssueLabel> existingLabels = new HashSet<>(existingIssue.getIssueLabels());
             for (IssueLabel existingLabel : existingLabels) {
                 existingIssue.removeIssueLabel(existingLabel);
                 issueLabelRepo.delete(existingLabel);
             }
-
-            // Добавляем новые метки
             for (String labelName : input.getLabels()) {
-                Label label = labelRepo
-                        .findByName(labelName)
-                        .orElseGet(() ->
-                                labelRepo.save(Label.builder()
-                                        .name(labelName)
-                                        .build()));
-
-                IssueLabel issueLabel = IssueLabel.builder()
-                        .issue(existingIssue)
-                        .label(label)
-                        .build();
-
-                existingIssue.addIssueLabel(issueLabel);
-                label.addIssueLabel(issueLabel);
-                issueLabelRepo.save(issueLabel);
+                findOrCreateLabel(existingIssue, labelName);
             }
         }
+    }
 
-        // Сохраняем обновленную задачу
-        Issue updatedIssue = repoImpl.save(existingIssue);
-        return mapper.out(updatedIssue);
+    private void findOrCreateLabel(Issue existingIssue, String labelName) {
+        Label label = labelRepo
+                .findByName(labelName)
+                .orElseGet(() ->
+                        labelRepo.save(Label.builder()
+                                .name(labelName)
+                                .build()));
+
+        IssueLabel issueLabel = IssueLabel.builder()
+                .issue(existingIssue)
+                .label(label)
+                .build();
+
+        existingIssue.addIssueLabel(issueLabel);
+        label.addIssueLabel(issueLabel);
+        issueLabelRepo.save(issueLabel);
     }
 
     @Transactional
@@ -164,18 +134,12 @@ public class IssueService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Label not found"));
 
         Set<Label> labelsToDelete = new HashSet<>();
-        issue.getIssueLabels().forEach(link -> {
-            Label label = link.getLabel();
-            log.debug(label.getName());
-            labelRepo.delete(label);
-        });
+        issue.getIssueLabels().forEach(link ->
+                labelRepo.delete(link.getLabel())
+        );
 
-        // Удаляем задачу
         repoImpl.delete(issue);
-
-        // Удаляем метки без связей
         labelRepo.deleteAll(labelsToDelete);
-
         return true;
     }
 }

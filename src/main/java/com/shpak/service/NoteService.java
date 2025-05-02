@@ -6,8 +6,10 @@ import com.shpak.mapper.NoteDto;
 import com.shpak.model.Note;
 import com.shpak.repository.impl.NoteRepoImpl;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -44,7 +46,7 @@ public class NoteService {
     @Transactional
     public NoteResponseTo update(NoteRequestTo input) {
         if (!repoImpl.existsById(input.getId())) {
-            throw new RuntimeException("Label not found with id: " + input.getId());
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Label not found with id: " + input.getId());
         }
         Note updated = repoImpl.save(mapper.in(input));
         return mapper.out(updated);

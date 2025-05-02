@@ -19,23 +19,17 @@ public interface IssueDto {
     @Mapping(source = "issueLabels", target = "labels", qualifiedByName = "mapLabels")
     IssueResponseTo out(Issue entity);
 
-    @Mapping(target = "issueLabels", ignore = true) // Пропускаем при создании сущности из DTO
+    @Mapping(target = "issueLabels", ignore = true) // miss when create from DTO
     @Mapping(target = "editor", source = "editorId", qualifiedByName = "idToEditor")
     Issue in(IssueRequestTo inputDto);
 
     @Named("mapLabels")
     static List<String> mapLabels(Set<IssueLabel> issueLabels) {
-        List<String> labels = issueLabels.stream()
+        return issueLabels.stream()
                 .map(il ->
-                        {
-                            String name = il.getLabel().getName();
-                            System.out.println("MY LOG Mapped label: " + name);
-                            return name;
-                        }
+                        il.getLabel().getName()
                 )
                 .collect(Collectors.toList());
-        System.out.println("Total labels mapped: " + labels.size());
-        return labels;
     }
 
     @Named("idToEditor")

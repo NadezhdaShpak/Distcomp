@@ -25,7 +25,8 @@ public interface LabelDto {
     @Named("mapIssues")
     static List<Long> mapIssues(Set<IssueLabel> labelIssues) {
         return labelIssues.stream()
-                .map(issueLabel -> issueLabel.getIssue().getId())
+                .map(il ->
+                        il.getIssue().getId())
                 .collect(Collectors.toList());
     }
 }
